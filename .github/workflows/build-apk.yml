@@ -68,22 +68,6 @@ jobs:
         working-directory: lua-audit/android
         run: ./gradlew --no-daemon assembleDebug
 
-      - name: Build release APK (unsigned) if a keystore is provided
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
-        working-directory: lua-audit/android
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > app/sskid.keystore
-          ./gradlew --no-daemon assembleRelease \
-            -Pandroid.injected.signing.store.file="$PWD/app/sskid.keystore" \
-            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
-            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
-
       - name: Collect APKs
         run: |
           mkdir -p out
