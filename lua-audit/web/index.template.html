@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sskid Scanner">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="__LOGO__">
+<link rel="apple-touch-icon" href="__SPLASH__">
+<title>Sskid Script Scanner</title>
+<style>
+  :root{
+    --bg:#07070b; --panel:#120e11; --panel2:#1a1418; --panel3:#251a1f;
+    --line:#33232a; --fg:#f0eaeb; --dim:#9d8b90; --dim2:#6e5a61;
+    --accent:#e11d2e; --accent2:#ff7a45; --ok:#3ddc97; --warn:#f5b301;
+    --bad:#ff5c7a; --console:#050507;
+    --ui:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,Tahoma,sans-serif;
+    --mono:"Cascadia Mono",Consolas,ui-monospace,"Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--ui);
+            -webkit-text-size-adjust:100%}
+  body{min-height:100vh}
+  button{font-family:inherit}
+
+  /* ---------------- splash ---------------- */
+  #splash{position:fixed;inset:0;z-index:50;background:var(--bg);
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          gap:6px;transition:opacity .35s ease;padding:24px}
+  #splash.hide{opacity:0;pointer-events:none}
+  #splash img{width:min(58vw,230px);height:auto;border-radius:18px;
+              filter:drop-shadow(0 10px 30px rgba(225,29,46,.28))}
+  #splash h1{margin:16px 0 0;font-size:22px;letter-spacing:.4px}
+  #splash p{margin:2px 0 0;color:var(--dim);font-size:13px}
+  #splashBar{width:min(72vw,420px);height:8px;background:var(--panel3);border-radius:99px;
+             margin-top:26px;overflow:hidden}
+  #splashBar i{display:block;height:100%;width:0;border-radius:99px;
+               background:linear-gradient(90deg,var(--accent),var(--accent2));
+               transition:width .12s linear}
+  #splashMsg{margin-top:10px;color:var(--dim);font-size:12.5px;min-height:18px}
+
+  /* ---------------- layout ---------------- */
+  .app{max-width:1080px;margin:0 auto;padding:0 12px 96px}
+  header.top{position:sticky;top:0;z-index:20;background:rgba(18,14,17,.92);
+             backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+             margin:0 -12px 12px;padding:12px 16px;display:flex;align-items:center;gap:12px}
+  header.top::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;
+                     background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  header.top img{width:42px;height:42px;border-radius:12px}
+  header.top .t h1{margin:0;font-size:17px;font-weight:700}
+  header.top .t p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+  header.top .spin{margin-inline-start:auto;font-size:12px;color:var(--accent2);white-space:nowrap}
+
+  nav.tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);
+                  color:var(--dim);border-radius:12px;padding:9px 14px;font-size:13px;
+                  cursor:pointer;white-space:nowrap;transition:.15s}
+  nav.tabs button:hover{color:var(--fg);border-color:var(--panel3)}
+  nav.tabs button.on{background:linear-gradient(180deg,var(--accent),#b31524);color:#fff;
+                     border-color:transparent;box-shadow:0 6px 18px rgba(225,29,46,.3)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+        padding:14px;margin-bottom:12px}
+  .card h2{margin:0 0 10px;font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;
+           color:var(--dim2);font-weight:700}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .grow{flex:1 1 220px;min-width:0}
+  .pathbox{background:var(--panel2);border:1px solid var(--line);border-radius:11px;
+           padding:10px 12px;font-family:var(--mono);font-size:12.5px;color:var(--fg);
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:left}
+  .pathbox.empty{color:var(--dim2)}
+  .btn{border:1px solid var(--line);background:var(--panel3);color:var(--fg);border-radius:11px;
+       padding:10px 14px;font-size:13px;cursor:pointer;transition:.15s}
+  .btn:hover{background:#2e2026}
+  .btn.primary{background:linear-gradient(180deg,var(--accent),#b31524);border-color:transparent;
+               color:#fff;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.1)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.sm{padding:7px 11px;font-size:12px}
+
+  .fields{display:flex;gap:14px;flex-wrap:wrap}
+  .field label{display:block;font-size:11px;color:var(--dim2);margin-bottom:5px;font-weight:600}
+  .field input{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+               color:var(--fg);padding:8px 10px;font-family:var(--ui);font-size:13px;
+               width:110px;outline:none}
+  .field.wide input{width:100%;font-family:var(--mono);font-size:12px}
+  .field input:focus{border-color:var(--accent)}
+  .field.hide{display:none}
+
+  /* verdict */
+  #verdict{display:none}
+  #verdict.show{display:block}
+  .vwrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .ring{width:132px;height:132px;flex:0 0 auto;transform:rotate(-90deg)}
+  .ring circle{fill:none;stroke-width:11;stroke-linecap:round}
+  .ring .bg{stroke:var(--panel3)}
+  .ring .fg{stroke:var(--ok);stroke-dasharray:326.7;stroke-dashoffset:326.7;
+            transition:stroke-dashoffset .7s cubic-bezier(.3,.8,.3,1),stroke .3s}
+  .ringTxt{position:relative;width:132px;height:132px;flex:0 0 auto}
+  .ringTxt .n{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+              justify-content:center;font-weight:700}
+  .ringTxt .n b{font-size:34px;line-height:1}
+  .ringTxt .n span{font-size:11px;color:var(--dim);margin-top:3px}
+  .vmeta{flex:1 1 260px;min-width:0}
+  .verdictWord{font-size:26px;font-weight:800;margin:0 0 4px}
+  .vnote{margin:0 0 12px;color:var(--dim);font-size:13px;line-height:1.55}
+  .meter{margin-bottom:9px}
+  .meter .lab{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);
+              margin-bottom:4px;font-weight:600}
+  .meter .bar{height:9px;border-radius:99px;background:var(--panel3);overflow:hidden}
+  .meter .bar i{display:block;height:100%;width:0;border-radius:99px;transition:width .6s ease}
+  .vstats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--dim2)}
+  .vstats span{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+               padding:5px 9px;font-family:var(--mono);direction:ltr}
+
+  /* console */
+  .console{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--console)}
+  .console .bar{display:flex;align-items:center;gap:8px;background:var(--panel);padding:8px 12px;
+                border-bottom:1px solid var(--line)}
+  .console .bar b{font-size:11.5px;color:var(--dim2);letter-spacing:.5px;margin-inline-end:auto}
+  pre#out{margin:0;padding:14px;font-family:var(--mono);font-size:12px;line-height:1.55;
+          color:#c6c9dd;white-space:pre;overflow:auto;max-height:52vh;direction:ltr;text-align:left}
+  pre#out .t{color:var(--bad)} pre#out .c{color:var(--warn)} pre#out .o{color:var(--ok)}
+  pre#out .h{color:var(--accent2)} pre#out .d{color:var(--dim2)}
+
+  footer.status{position:fixed;inset-inline:0;bottom:0;z-index:20;display:flex;gap:10px;
+                align-items:center;padding:9px 16px;font-size:12px;color:var(--dim);
+                background:rgba(7,7,11,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  footer.status .r{margin-inline-start:auto;color:var(--dim2);font-family:var(--mono)}
+  .hint{color:var(--dim2);font-size:12px;line-height:1.6;margin:0}
+
+  @media (max-width:560px){
+    .ring,.ringTxt{width:112px;height:112px}
+    .ringTxt .n b{font-size:28px}
+    header.top .t p{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= splash ================= -->
+<div id="splash">
+  <img id="splashImg" alt="">
+  <h1>Sskid Script Scanner</h1>
+  <p>اسکنر استاتیک اسکریپت  •  هیچ فایلی اجرا نمی‌شود</p>
+  <div id="splashBar"><i id="splashFill"></i></div>
+  <div id="splashMsg">در حال آماده‌سازی…</div>
+</div>
+
+<!-- ================= app ================= -->
+<div class="app">
+  <header class="top">
+    <img id="logoImg" alt="">
+    <div class="t">
+      <h1>Sskid Script Scanner</h1>
+      <p>اسکنر استاتیک  •  فقط بایت‌ها خوانده می‌شوند</p>
+    </div>
+    <div class="spin" id="busyTxt"></div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <!-- target -->
+  <div class="card">
+    <h2>هدف</h2>
+    <div class="row">
+      <div class="pathbox empty grow" id="pathBox">فایلی انتخاب نشده</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnFile">📄 انتخاب فایل</button>
+      <button class="btn" id="btnMulti">🗂 چند فایل (batch)</button>
+      <button class="btn" id="btnDir">📂 انتخاب پوشه</button>
+      <button class="btn primary" id="btnRun" style="margin-inline-start:auto">▶ اجرا</button>
+    </div>
+    <input type="file" id="inpFile" multiple hidden>
+    <input type="file" id="inpDir" webkitdirectory hidden>
+  </div>
+
+  <!-- options -->
+  <div class="card">
+    <h2>گزینه‌ها</h2>
+    <div class="fields">
+      <div class="field" id="fMinScore"><label>حداقل امتیاز</label><input type="number" id="minScore" value="0" min="0" max="100"></div>
+      <div class="field" id="fMinStr"><label>حداقل طول رشته</label><input type="number" id="minStr" value="6" min="2" max="60"></div>
+      <div class="field wide" id="fGrep"><label>فیلتر رشته‌ها (regex)</label><input type="text" id="grep" placeholder="http|webhook|api"></div>
+    </div>
+    <p class="hint" id="optHint" style="margin-top:10px"></p>
+  </div>
+
+  <!-- verdict -->
+  <div class="card" id="verdict">
+    <div class="vwrap">
+      <div class="ringTxt">
+        <svg class="ring" viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"></circle><circle class="fg" id="ringFg" cx="60" cy="60" r="52"></circle></svg>
+        <div class="n"><b id="scoreN">0</b><span>/ ۱۰۰</span></div>
+      </div>
+      <div class="vmeta">
+        <p class="verdictWord" id="vWord">—</p>
+        <p class="vnote" id="vNote"></p>
+        <div class="meter"><div class="lab"><span>تهدید</span><span id="thN">0</span></div><div class="bar"><i id="thBar"></i></div></div>
+        <div class="meter"><div class="lab"><span>قابلیت</span><span id="capN">0</span></div><div class="bar"><i id="capBar"></i></div></div>
+        <div class="vstats" id="vStats"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- console -->
+  <div class="console">
+    <div class="bar">
+      <b>خروجی</b>
+      <button class="btn sm" id="btnSave">💾 ذخیره</button>
+      <button class="btn sm" id="btnCopy">📋 کپی</button>
+      <button class="btn sm" id="btnClear">✕ پاک</button>
+    </div>
+    <pre id="out"></pre>
+  </div>
+</div>
+
+<footer class="status">
+  <span id="stLeft">آماده</span>
+  <span class="r" id="stRight"></span>
+</footer>
+
+<script>
+/* =====================================================================
+   Sskid Script Scanner — static Lua/Luau auditor (browser engine)
+   Port of lua_audit.py. Never executes the target file.
+   ===================================================================== */
+
+/* ------------------------------ hashes ------------------------------ */
+function rotr32(x,n){ return (x>>>n)|(x<<(32-n)); }
+
+function sha256(bytes){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const l=bytes.length, withOne=l+1, k=(56-(withOne%64)+64)%64, total=withOne+k+8;
+  const m=new Uint8Array(total); m.set(bytes); m[l]=0x80;
+  const dv=new DataView(m.buffer);
+  dv.setUint32(total-8, Math.floor(l/0x20000000));
+  dv.setUint32(total-4, (l<<3)>>>0);
+  const w=new Uint32Array(64);
+  for(let i=0;i<total;i+=64){
+    for(let t=0;t<16;t++) w[t]=dv.getUint32(i+t*4);
+    for(let t=16;t<64;t++){
+      const s0=rotr32(w[t-15],7)^rotr32(w[t-15],18)^(w[t-15]>>>3);
+      const s1=rotr32(w[t-2],17)^rotr32(w[t-2],19)^(w[t-2]>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)>>>0;
+    }
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let t=0;t<64;t++){
+      const S1=rotr32(e,6)^rotr32(e,11)^rotr32(e,25);
+      const ch=(e&f)^(~e&g);
+      const t1=(h+S1+ch+K[t]+w[t])>>>0;
+      const S0=rotr32(a,2)^rotr32(a,13)^rotr32(a,22);
+      const maj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+maj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    H=[(H[0]+a)>>>0,(H[1]+b)>>>0,(H[2]+c)>>>0,(H[3]+d)>>>0,(H[4]+e)>>>0,(H[5]+f)>>>0,(H[6]+g)>>>0,(H[7]+h)>>>0];
+  }
+  return H.map(x=>x.toString(16).padStart(8,'0')).join('');
+}
+
+function sha1(bytes){
+  const l=bytes.length, withOne=l+1, k=(56-(withOne%64)+64)%64, total=withOne+k+8;
+  const m=new Uint8Array(total); m.set(bytes); m[l]=0x80;
+  const dv=new DataView(m.buffer);
+  dv.setUint32(total-8, Math.floor(l/0x20000000));
+  dv.setUint32(total-4, (l<<3)>>>0);
+  let h0=0x67452301,h1=0xEFCDAB89,h2=0x98BADCFE,h3=0x10325476,h4=0xC3D2E1F0;
+  const w=new Uint32Array(80);
+  for(let i=0;i<total;i+=64){
+    for(let j=0;j<16;j++) w[j]=dv.getUint32(i+j*4);
+    for(let j=16;j<80;j++){ const v=w[j-3]^w[j-8]^w[j-14]^w[j-16]; w[j]=((v<<1)|(v>>>31))>>>0; }
+    let a=h0,b=h1,c=h2,d=h3,e=h4;
+    for(let j=0;j<80;j++){
+      let f,kk;
+      if(j<20){ f=(b&c)|(~b&d); kk=0x5A827999; }
+      else if(j<40){ f=b^c^d; kk=0x6ED9EBA1; }
+      else if(j<60){ f=(b&c)|(b&d)|(c&d); kk=0x8F1BBCDC; }
+      else { f=b^c^d; kk=0xCA62C1D6; }
+      const t=((((a<<5)|(a>>>27))>>>0)+f+e+kk+w[j])>>>0;
+      e=d; d=c; c=((b<<30)|(b>>>2))>>>0; b=a; a=t;
+    }
+    h0=(h0+a)>>>0; h1=(h1+b)>>>0; h2=(h2+c)>>>0; h3=(h3+d)>>>0; h4=(h4+e)>>>0;
+  }
+  return [h0,h1,h2,h3,h4].map(x=>x.toString(16).padStart(8,'0')).join('');
+}
+
+function md5(bytes){
+  const S=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,
+           5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+           4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,
+           6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+  const K=[0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
+           0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
+           0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
+           0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
+           0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
+           0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
+           0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
+           0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391];
+  const l=bytes.length, withOne=l+1, k=(56-(withOne%64)+64)%64, total=withOne+k+8;
+  const m=new Uint8Array(total); m.set(bytes); m[l]=0x80;
+  const dv=new DataView(m.buffer);
+  const bits=l*8;
+  dv.setUint32(total-8, bits>>>0, true);
+  dv.setUint32(total-4, Math.floor(bits/0x100000000), true);
+  let a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476;
+  const M=new Int32Array(16);
+  for(let i=0;i<total;i+=64){
+    for(let j=0;j<16;j++) M[j]=dv.getInt32(i+j*4,true);
+    let a=a0,b=b0,c=c0,d=d0;
+    for(let j=0;j<64;j++){
+      let f,g;
+      if(j<16){ f=(b&c)|(~b&d); g=j; }
+      else if(j<32){ f=(d&b)|(~d&c); g=(5*j+1)%16; }
+      else if(j<48){ f=b^c^d; g=(3*j+5)%16; }
+      else { f=c^(b|~d); g=(7*j)%16; }
+      f=(f+a+K[j]+M[g])|0;
+      a=d; d=c; c=b;
+      b=(b+((f<<S[j])|(f>>>(32-S[j]))))|0;
+    }
+    a0=(a0+a)|0; b0=(b0+b)|0; c0=(c0+c)|0; d0=(d0+d)|0;
+  }
+  let hex='';
+  for(const w of [a0,b0,c0,d0]){ for(let i=0;i<4;i++) hex+=((w>>>(i*8))&0xff).toString(16).padStart(2,'0'); }
+  return hex;
+}
+
+/* ------------------------------ helpers ------------------------------ */
+function entropy(bytes){
+  if(!bytes.length) return 0;
+  const c=new Uint32Array(256);
+  for(let i=0;i<bytes.length;i++) c[bytes[i]]++;
+  const n=bytes.length; let e=0;
+  for(let i=0;i<256;i++){ if(c[i]){ const p=c[i]/n; e-=p*Math.log2(p); } }
+  return e;
+}
+function printableRatio(bytes){
+  if(!bytes.length) return 0;
+  let k=0;
+  for(let i=0;i<bytes.length;i++){ const b=bytes[i]; if((b>=32&&b<127)||b===9||b===10||b===13) k++; }
+  return k/bytes.length;
+}
+function decodeText(bytes){
+  for(const enc of ['utf-8','windows-1256']){
+    try{ return new TextDecoder(enc,{fatal:true}).decode(bytes); }catch(e){}
+  }
+  let s='';
+  for(let i=0;i<bytes.length;i+=8192) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));
+  return s;
+}
+function splitLines(text){
+  return text.split(/\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/);
+}
+function longestLine(text){
+  let m=0; for(const ln of splitLines(text)) if(ln.length>m) m=ln.length; return m;
+}
+
+/* ------------------------------ rules ------------------------------ */
+const RULES=[
+ ['remote_exec', /loadstring\s*\(\s*(?:game\s*:\s*HttpGet|httpget|request)/im,'threat',55,'code is downloaded and executed at runtime'],
+ ['http_get', /\bgame\s*:\s*HttpGet\b|\bhttpget\s*\(/im,'capability',12,'fetches a remote file'],
+ ['http_request', /\bhttp_request\b|\bsyn\s*\.\s*request\b|\bfluxus\s*\.\s*request\b/im,'capability',10,'raw HTTP capability'],
+ ['webhook', /discord(?:app)?\.com\/api\/webhooks\//im,'threat',50,'posts to a Discord webhook'],
+ ['ip_lookup', /icanhazip|ipify|ipinfo\.io|whatismyip|checkip\.amazonaws/im,'threat',25,'resolves the public IP address'],
+ ['clipboard', /\b(?:setclipboard|toclipboard|getclipboard)\b/im,'capability',10,'reads or writes the clipboard'],
+ ['file_write', /\b(?:writefile|appendfile|delfile|makefolder)\s*\(/im,'capability',10,'writes to the local filesystem'],
+ ['file_read', /\b(?:readfile|listfiles|isfile)\s*\(/im,'capability',6,'reads the local filesystem'],
+ ['kick', /[:.]\s*Kick\s*\(/im,'threat',25,'kicks the local player'],
+ ['anti_tamper', /Tamper Detected|anti[-_ ]?tamper|debugInfo\s*=\s*false/im,'threat',20,'anti-tamper / hides its own traces'],
+ ['getgenv', /\bgetgenv\s*\(|\bgetrenv\s*\(|\bgethui\s*\(/im,'capability',6,'touches executor globals'],
+ ['hook', /\bhookfunction\b|\bhookmetamethod\b|\bsetreadonly\b/im,'capability',10,'hooks engine functions'],
+ ['remote_call', /\bFireServer\s*\(|\bInvokeServer\s*\(/im,'capability',4,'invokes remote events'],
+ ['identity', /\bidentifyexecutor\s*\(|\bgetcustomasset\b/im,'capability',4,'fingerprints the executor'],
+ ['decoy_print', /print\s*\(\s*["'](?:Hello World|Hello Nigga)["']\s*\)/im,'capability',0,'known decoy payload (does nothing)'],
+ ['long_loop', /while\s+true\s+do\s*$/im,'threat',10,'infinite loop (client freeze)'],
+ ['fake_auth', /_G\.(?:AUTH_KEY|AUTHORIZED_SOURCE)|AUTHORIZED_SOURCE\s*=/im,'capability',6,'placebo auth globals (checked by nothing)'],
+];
+const URL_RE=/https?:\/\/[^\s"'<>)\]},]+/gi;
+const WEBHOOK_RE=/(discord(?:app)?\.com\/api\/webhooks\/\d+\/)([A-Za-z0-9_-]+)/i;
+const OBF_SIGNATURES=[
+ ['WeAreDevs',/wearedevs\.net\/obfuscator/i],
+ ['Luraph',/Luraph|LPH!/i],
+ ['PSU',/psu\.dev|psu\.gg/i],
+ ['MoonSec',/monsec|moonsec/i],
+ ['Ironbrew',/ironbrew|ironbrew2/i],
+ ['generic-VM',/\breturn\s*\(function\(\.\.\.\)\s*local\s+\w+\s*=\s*\{/i],
+];
+const HIDING_PACKERS=new Set(['WeAreDevs','Luraph','PSU','MoonSec','Ironbrew']);
+const BIN_EXT=new Set(['.png','.jpg','.jpeg','.gif','.webp','.mp3','.ogg','.wav','.mp4','.webm',
+  '.rbxm','.rbxmx','.ttf','.otf','.zip','.exe','.dll']);
+const KNOWN_DEFAULT={
+ 'script689':{size:21,sha256:'db63149bd0e2e4fa2f3446dba3074805e9e84b313fbd73bfa1c11eeaa9a70952',
+   url:'https://raw.githubusercontent.com/ermiya1231/Script1/refs/heads/main/script689'},
+ 'sskidiswhite':{size:21,sha256:'227e1ead641358da822810e4c62a311c75a1165ee3a2126dfa6e93613b335384',
+   url:'https://raw.githubusercontent.com/ermiya1231/Script1/refs/heads/main/sskidiswhite'},
+};
+
+function countMatches(re,text){
+  const g=new RegExp(re.source, re.flags.includes('g')?re.flags:re.flags+'g');
+  let n=0, m;
+  while((m=g.exec(text))!==null){ n++; if(m.index===g.lastIndex) g.lastIndex++; }
+  return n;
+}
+function maskWebhook(url){
+  const m=WEBHOOK_RE.exec(url);
+  if(!m) return url;
+  const tok=m[2];
+  return m[1]+tok.slice(0,6)+'…'+tok.slice(-4);
+}
+function detectObfuscator(text){
+  const found=[];
+  for(const [name,re] of OBF_SIGNATURES){ if(re.test(text)) found.push(name); }
+  return found;
+}
+
+/* ------------------------------ scan ------------------------------ */
+function scanBytes(bytes, displayPath){
+  const text=decodeText(bytes);
+  const r={};
+  r.file=displayPath;
+  r.bytes=bytes.length;
+  r.sha256=sha256(bytes);
+  r.entropy=Number(entropy(bytes).toFixed(3));
+  r.printable_ratio=Number(printableRatio(bytes).toFixed(3));
+  r.longest_line=longestLine(text);
+  r.obfuscators=detectObfuscator(text);
+
+  const findings=[]; let threat=0, capability=0;
+  for(const [code,re,kind,weight,note] of RULES){
+    const hits=countMatches(re,text);
+    if(hits>0){
+      if(kind==='threat') threat+=weight; else capability+=weight;
+      findings.push({rule:code,kind:kind,hits:hits,weight:weight,note:note});
+    }
+  }
+  const packers=r.obfuscators.filter(o=>HIDING_PACKERS.has(o));
+  const opaque=packers.length>0;
+  if(opaque){
+    threat+=25;
+    findings.push({rule:'packed',kind:'threat',hits:packers.length,weight:25,
+      note:'packed with '+packers.join(', ')+' — the code inside cannot be read statically'});
+  }
+  if(r.longest_line>=20000){
+    threat+=15;
+    findings.push({rule:'single_line',kind:'threat',hits:0,weight:15,
+      note:'entire payload on one line (minified or packed)'});
+  } else if(r.longest_line>=4000){
+    threat+=6;
+    findings.push({rule:'long_line',kind:'threat',hits:0,weight:6,
+      note:'very long lines (generated or minified code)'});
+  }
+  if(r.bytes>4096 && r.longest_line/r.bytes>0.9){
+    threat+=10;
+    findings.push({rule:'one_line_file',kind:'threat',hits:0,weight:10,
+      note:'a single line covers almost the whole file'});
+  }
+  const esc=(text.split('\\').length-1)/Math.max(1,text.length);
+  if(esc>0.02 && r.printable_ratio>0.9){
+    threat+=10;
+    findings.push({rule:'escape_heavy',kind:'threat',hits:Math.trunc(esc*1000),weight:10,
+      note:'heavy string escaping (obfuscation style)'});
+  }
+  if(r.entropy>7.5){
+    threat+=10;
+    findings.push({rule:'high_entropy',kind:'threat',hits:0,weight:10,
+      note:'compressed or encrypted blob'});
+  }
+
+  const raw=new Set();
+  URL_RE.lastIndex=0;
+  let mm;
+  while((mm=URL_RE.exec(text))!==null){ raw.add(mm[0]); }
+  const urls=Array.from(raw).map(u=>u.replace(/[.,;]+$/,'')).sort();
+  r.urls=urls.map(maskWebhook);
+  r.domains=Array.from(new Set(urls.map(u=>{
+    const m=/^https?:\/\/([^/]+)/i.exec(u); return m?m[1].toLowerCase():'';
+  }).filter(Boolean))).sort();
+  r.webhook_count=urls.filter(u=>WEBHOOK_RE.test(u)).length;
+
+  const score=Math.min(100, threat+Math.floor(capability/2));
+  r.threat=threat; r.capability=capability; r.score=score;
+  r.auditable=!opaque;
+  r.verdict=score>=60?'DO NOT RUN':(score>=25?'REVIEW':'LOW RISK');
+  r.findings=findings;
+  r.known=null;
+  for(const name in KNOWN_DEFAULT){
+    const meta=KNOWN_DEFAULT[name];
+    if(meta.sha256===r.sha256 && meta.size===r.bytes) r.known=name;
+  }
+  return r;
+}
+
+function fmtBytes(n){ return n.toLocaleString('en-US'); }
+
+function renderScan(r){
+  const out=[];
+  out.push('='.repeat(66));
+  out.push('FILE      '+r.file);
+  out.push('SIZE      '+fmtBytes(r.bytes)+' bytes');
+  out.push('SHA256    '+r.sha256);
+  out.push('ENTROPY   '+r.entropy.toFixed(3)+' bits/byte    PRINTABLE '+(r.printable_ratio*100).toFixed(1)+'%    LONGEST LINE '+r.longest_line);
+  out.push('OBFUSC.   '+(r.obfuscators.length?r.obfuscators.join(', '):'none detected'));
+  out.push('AUDITABLE '+(r.auditable?'yes':'no — packed, only metadata is visible'));
+  if(r.known) out.push('KNOWN     exact match for "'+r.known+'" (harmless decoy)');
+  out.push('VERDICT   '+r.verdict+'   (threat '+r.threat+' + capability '+r.capability+'/2 = '+r.score+'/100)');
+  out.push('');
+  if(!r.auditable){
+    out.push('NOTE      "no findings" here does NOT mean "safe": the payload is packed,');
+    out.push('          so the pattern scan cannot see inside it. Treat as unknown code.');
+    out.push('');
+  }
+  if(r.findings.length){
+    out.push('FINDINGS');
+    for(const f of r.findings){
+      const tag=f.kind==='threat'?'THREAT':'can   ';
+      const rule=(f.rule+'              ').slice(0,14);
+      out.push('  ['+tag+'] +'+rule+' x'+(f.hits+'    ').slice(0,4)+'  '+f.note);
+    }
+  } else out.push('FINDINGS  none');
+  if(r.urls.length){
+    out.push('');
+    out.push('URLS ('+r.urls.length+', '+r.webhook_count+' webhook)');
+    for(const u of r.urls.slice(0,25)) out.push('  '+u);
+    if(r.urls.length>25) out.push('  ... '+(r.urls.length-25)+' more');
+  }
+  out.push('');
+  return out.join('\n');
+}
+
+/* ------------------------------ strings ------------------------------ */
+function decodeLuaEscapes(s){
+  return s.replace(/\\x[0-9a-fA-F]{2}|\\\d{1,3}|\\[nrtabfv\\"']/g, tok=>{
+    const c=tok[1];
+    if(c==='x') return String.fromCharCode(parseInt(tok.slice(2),16));
+    if(c>='0'&&c<='9') return String.fromCharCode(parseInt(tok.slice(1),10)%256);
+    const map={n:'\n',r:'\r',t:'\t',a:'\x07',b:'\b',f:'\f',v:'\v','\\':'\\','"':'"',"'":"'"};
+    return map[c]!==undefined?map[c]:tok;
+  });
+}
+function isPrintable(s){
+  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); if(c<32||c===127) return false; }
+  return true;
+}
+function extractStrings(bytes,opt){
+  const n=Math.max(2,opt.min||4);
+  const found=[];
+  const re=new RegExp('[\\x20-\\x7e]{'+n+',}','g');
+  const ascii=decodeText(bytes);
+  let m;
+  while((m=re.exec(ascii))!==null){ found.push([m.index,m[0]]); if(found.length>200000) break; }
+  if(opt.escapes!==false){
+    const text=decodeText(bytes);
+    const ere=/(?:\\\d{1,3}|\\x[0-9a-fA-F]{2}|\\[nrtabfv\\"']){3,}/g;
+    let e;
+    while((e=ere.exec(text))!==null){
+      const dec=decodeLuaEscapes(e[0]);
+      if(dec.length>=n && isPrintable(dec)) found.push([e.index,dec]);
+    }
+  }
+  found.sort((a,b)=>a[0]-b[0]);
+  const seen=new Set(), rows=[];
+  const limit=opt.limit||2000, width=opt.width||240;
+  for(const [off,s] of found){
+    if(opt.grep){ let g; try{ g=new RegExp(opt.grep,'i'); }catch(err){ g=null; } if(g&&!g.test(s)) continue; }
+    if(seen.has(s)) continue;
+    seen.add(s); rows.push([off,s]);
+    if(rows.length>=limit) break;
+  }
+  const lines=[];
+  for(const [off,s] of rows){
+    const hex=off.toString(16).padStart(8,'0');
+    if(s.length>width) lines.push(hex+'  '+s.slice(0,width)+' … [+'+(s.length-width)+' chars]');
+    else lines.push(hex+'  '+s);
+  }
+  lines.push('');
+  lines.push(rows.length+' string(s)');
+  return lines.join('\n');
+}
+
+/* ------------------------------ urls / batch ------------------------------ */
+function urlsFromFiles(files){
+  const seen={};
+  let nfiles=0;
+  for(const f of files){
+    const ext=(f.name.match(/\.[^.]+$/)||[''])[0].toLowerCase();
+    if(BIN_EXT.has(ext)) continue;
+    nfiles++;
+    const text=decodeText(f.bytes);
+    URL_RE.lastIndex=0; let m;
+    while((m=URL_RE.exec(text))!==null){
+      const u=m[0].replace(/[.,;]+$/,'');
+      (seen[u]=seen[u]||new Set()).add(f.name);
+    }
+  }
+  const keys=Object.keys(seen).sort();
+  const lines=[keys.length+' unique URLs from '+nfiles+' files'];
+  for(const u of keys){
+    const who=Array.from(seen[u]).sort().slice(0,3).join(', ');
+    lines.push('  '+maskWebhook(u)+'   <- '+who);
+  }
+  return lines.join('\n');
+}
+function batchScan(files,minScore,onProgress){
+  const rows=[];
+  for(let i=0;i<files.length;i++){
+    const f=files[i];
+    const ext=(f.name.match(/\.[^.]+$/)||[''])[0].toLowerCase();
+    if(BIN_EXT.has(ext)) continue;
+    if(f.bytes.length>5_000_000) continue;
+    let r; try{ r=scanBytes(f.bytes,f.path||f.name); }catch(e){ continue; }
+    if(r.score>=minScore) rows.push(r);
+    if(onProgress && (i%20===0)) onProgress(i+1,files.length);
+  }
+  rows.sort((a,b)=>b.score-a.score);
+  const pad=(s,n)=>(s+'').padEnd(n);
+  const lines=[pad('SCR',4)+' '+pad('VERDICT',10)+' '+pad('THR',5)+' '+pad('CAP',5)+' '+pad('BYTES',8)+' FILE'];
+  for(const r of rows){
+    lines.push(pad(r.score,4)+' '+pad(r.verdict,10)+' '+pad(r.threat,5)+' '+pad(r.capability,5)+' '+pad(fmtBytes(r.bytes),8)+' '+(r.file||''));
+  }
+  lines.push('');
+  lines.push(rows.length+' file(s) at or above score '+minScore);
+  return lines.join('\n');
+}
+
+/* ------------------------------ watch ------------------------------ */
+async function watchSlots(onLine){
+  let changed=0;
+  for(const name in KNOWN_DEFAULT){
+    const meta=KNOWN_DEFAULT[name];
+    try{
+      const res=await fetch(meta.url,{cache:'no-store'});
+      const buf=new Uint8Array(await res.arrayBuffer());
+      const got=sha256(buf);
+      if(got!==meta.sha256){ changed++; onLine('[!!] '+name.padEnd(14)+' CHANGED  '+buf.length+' bytes  '+got); }
+      else onLine('[ok] '+name.padEnd(14)+' same     '+buf.length+' bytes');
+    }catch(e){ onLine('[?] '+name.padEnd(14)+' unreachable ('+e.message+')'); }
+  }
+  if(changed) onLine('\n'+changed+' slot(s) changed: new code is queued for everyone who loads them.');
+  return changed;
+}
+
+/* expose for testing */
+window.SskidEngine={scanBytes,renderScan,sha256,sha1,md5,entropy,printableRatio,decodeText,
+  extractStrings,urlsFromFiles,batchScan,maskWebhook,decodeLuaEscapes,longestLine};
+
+/* =====================================================================
+   UI
+   ===================================================================== */
+const TABS=[
+ ['scan','🔎 بازرسی کامل','امتیاز، حکم، یافته‌ها و URLها'],
+ ['hash','#️⃣ هش و آنتروپی','md5 / sha1 / sha256 + آنتروپی'],
+ ['strings','🔤 رشته‌ها','بیرون کشیدن متن‌ها + دیکد escape'],
+ ['urls','🌐 استخراج URL','همهٔ آدرس‌های فایل‌های انتخابی'],
+ ['batch','📁 اسکن چند فایل','همه را اسکن کن، مرتب بر اساس ریسک'],
+ ['watch','📡 اسلات‌های آنلاین','چک کردن دو اسلات شناخته‌شده'],
+];
+const $=id=>document.getElementById(id);
+const state={tab:'scan',files:[],busy:false};
+
+function setStatus(a,b){ $('stLeft').textContent=a||''; $('stRight').textContent=b||''; }
+function setBusy(on,txt){
+  state.busy=on;
+  $('btnRun').disabled=on;
+  $('busyTxt').textContent=on?(txt||'⏳ در حال بررسی…'):'';
+}
+function paintOut(text,cls){
+  const el=$('out'); el.textContent='';
+  const frag=document.createDocumentFragment();
+  for(const line of String(text).split('\n')){
+    let c='';
+    if(/^\s*\[THREAT\]/.test(line)) c='t';
+    else if(/^\s*\[can/.test(line)) c='c';
+    else if(/^VERDICT/.test(line)) c='h';
+    else if(/^\s*(https?|discord)/.test(line)) c='h';
+    else if(/^(=====|NOTE|\s)/.test(line)) c='d';
+    const sp=document.createElement('span'); sp.className=c; sp.textContent=line+'\n';
+    frag.appendChild(sp);
+  }
+  el.appendChild(frag); el.scrollTop=0;
+}
+function showVerdict(r){
+  const color=r.verdict==='DO NOT RUN'?'var(--bad)':(r.verdict==='REVIEW'?'var(--warn)':'var(--ok)');
+  const circ=326.7;
+  $('ringFg').style.stroke=color;
+  $('ringFg').style.strokeDashoffset=String(circ*(1-r.score/100));
+  $('scoreN').textContent=r.score;
+  $('scoreN').style.color=color;
+  $('vWord').textContent=r.verdict; $('vWord').style.color=color;
+  let note;
+  if(!r.auditable) note='فایل بسته‌بندی‌شده است؛ داخلش خوانده نشد. «یافته‌ای نبود» یعنی «نتوانستم ببینم»، نه «امن است».';
+  else if(r.verdict==='DO NOT RUN') note='کد از راه دور می‌آید/می‌رود یا خودش را پنهان می‌کند. اجرا نکن.';
+  else if(r.verdict==='REVIEW') note='یا ناشناخته است یا قابلیت زیادی دارد. خودت بخوان.';
+  else note='نشانهٔ مشکوکی پیدا نشد.';
+  $('vNote').textContent=note;
+  $('thN').textContent=r.threat;
+  $('thBar').style.width=Math.min(100,r.threat)+'%';
+  $('thBar').style.background=r.threat>=50?'var(--bad)':(r.threat>=20?'var(--warn)':'var(--ok)');
+  $('capN').textContent=r.capability;
+  $('capBar').style.width=Math.min(100,r.capability)+'%';
+  $('capBar').style.background='var(--accent2)';
+  const obf=r.obfuscators.length?r.obfuscators.join(', '):'—';
+  $('vStats').innerHTML='';
+  [['bytes',fmtBytes(r.bytes)+' B'],['entropy',r.entropy.toFixed(2)],
+   ['pack',obf],['urls',r.urls.length],['webhook',r.webhook_count]].forEach(([k,v])=>{
+    const s=document.createElement('span'); s.textContent=k+': '+v; $('vStats').appendChild(s);
+  });
+  $('verdict').classList.add('show');
+  setStatus(r.verdict,'امتیاز '+r.score+'/100');
+}
+function hideVerdict(){ $('verdict').classList.remove('show'); }
+
+function buildTabs(){
+  const nav=$('tabs'); nav.innerHTML='';
+  for(const [key,label,desc] of TABS){
+    const b=document.createElement('button');
+    b.textContent=label; b.dataset.key=key;
+    if(key===state.tab) b.classList.add('on');
+    b.onclick=()=>selectTab(key);
+    nav.appendChild(b);
+  }
+}
+function selectTab(key){
+  state.tab=key;
+  for(const b of $('tabs').children) b.classList.toggle('on',b.dataset.key===key);
+  const desc=TABS.find(t=>t[0]===key)[2];
+  $('optHint').textContent=desc;
+  $('fMinScore').classList.toggle('hide',!(key==='batch'));
+  $('fMinStr').classList.toggle('hide',!(key==='strings'));
+  $('fGrep').classList.toggle('hide',!(key==='strings'));
+  hideVerdict();
+  setStatus('آماده — '+desc,'');
+}
+
+function pickFiles(){
+  const inp=$('inpFile'); inp.value='';
+  inp.onchange=()=>loadFiles(inp.files);
+  inp.click();
+}
+function pickDir(){
+  const inp=$('inpDir'); inp.value='';
+  inp.onchange=()=>loadFiles(inp.files);
+  inp.click();
+}
+async function loadFiles(list){
+  const arr=Array.from(list||[]);
+  if(!arr.length) return;
+  setBusy(true,'⏳ خواندن فایل‌ها…');
+  const files=[];
+  for(const f of arr){
+    try{
+      const bytes=new Uint8Array(await f.arrayBuffer());
+      files.push({name:f.name, path:f.webkitRelativePath||f.name, bytes:bytes, size:f.size});
+    }catch(e){}
+  }
+  state.files=files;
+  const box=$('pathBox');
+  if(files.length===1){ box.textContent=files[0].path; box.classList.remove('empty'); }
+  else{ box.textContent=files.length+' فایل انتخاب شد'; box.classList.remove('empty'); }
+  setBusy(false);
+  setStatus('آماده','');
+}
+
+function needFiles(){
+  if(!state.files.length){ setStatus('اول فایل انتخاب کن',''); alert('اول یک فایل یا چند فایل انتخاب کن.'); return false; }
+  return true;
+}
+
+async function run(){
+  if(state.busy) return;
+  const tab=state.tab;
+  if(tab==='watch'){
+    setBusy(true,'⏳ بررسی اسلات‌ها…');
+    $('out').textContent='';
+    const lines=[];
+    await watchSlots(l=>{ lines.push(l); paintOut(lines.join('\n')); });
+    setBusy(false); setStatus('تمام',lines[lines.length-1]||''); hideVerdict();
+    return;
+  }
+  if(!needFiles()) return;
+  const f=state.files[0];
+  setBusy(true,'⏳ در حال بررسی…');
+  await new Promise(r=>setTimeout(r,20));
+  try{
+    if(tab==='scan'){
+      const r=scanBytes(f.bytes,f.path||f.name);
+      paintOut(renderScan(r)); showVerdict(r);
+    } else if(tab==='hash'){
+      const t=['file    '+(f.path||f.name),
+               'bytes   '+fmtBytes(f.bytes.length),
+               'md5     '+md5(f.bytes),
+               'sha1    '+sha1(f.bytes),
+               'sha256  '+sha256(f.bytes),
+               'entropy '+entropy(f.bytes).toFixed(3)].join('\n');
+      paintOut(t); hideVerdict(); setStatus('تمام','');
+    } else if(tab==='strings'){
+      const t=extractStrings(f.bytes,{min:+$('minStr').value||4,grep:$('grep').value.trim()||null,
+        escapes:true,limit:3000,width:240});
+      paintOut(t); hideVerdict(); setStatus('تمام','');
+    } else if(tab==='urls'){
+      paintOut(urlsFromFiles(state.files)); hideVerdict(); setStatus('تمام','');
+    } else if(tab==='batch'){
+      const t=batchScan(state.files,+$('minScore').value||0,(i,n)=>setBusy(true,'⏳ '+(i)+'/'+n));
+      paintOut(t); hideVerdict(); setStatus('تمام','');
+    }
+  }catch(e){
+    paintOut('خطا:\n'+e.stack); setStatus('خطا','');
+  }
+  setBusy(false);
+}
+
+function init(){
+  buildTabs();
+  selectTab('scan');
+  $('btnFile').onclick=()=>{ $('inpFile').multiple=false; pickFiles(); };
+  $('btnMulti').onclick=()=>{ $('inpFile').multiple=true; pickFiles(); };
+  $('btnDir').onclick=pickDir;
+  $('btnRun').onclick=run;
+  $('btnClear').onclick=()=>{ $('out').textContent=''; hideVerdict(); setStatus('آماده',''); };
+  $('btnCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText($('out').textContent); setStatus('کپی شد',''); }catch(e){ setStatus('کپی نشد',''); } };
+  $('btnSave').onclick=()=>{
+    const blob=new Blob([$('out').textContent],{type:'text/plain;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='sskid-report.txt'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  };
+  document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)) run(); });
+
+  // splash
+  const fill=$('splashFill'), msg=$('splashMsg');
+  const steps=[[18,'بارگذاری موتور…'],[46,'آماده‌سازی رابط کاربری…'],[74,'بررسی فایل‌های داخلی…'],[100,'آماده است']];
+  let i=0;
+  const tick=()=>{
+    if(i<steps.length){ fill.style.width=steps[i][0]+'%'; msg.textContent=steps[i][1]; i++; setTimeout(tick,260); }
+    else{ setTimeout(()=>{ $('splash').classList.add('hide'); setTimeout(()=>$('splash').remove(),400); },220); }
+  };
+  setTimeout(tick,260);
+  $('splash').onclick=()=>{ $('splash').classList.add('hide'); setTimeout(()=>{ const s=$('splash'); if(s) s.remove(); },400); };
+}
+
+$('splashImg').src='__SPLASH__';
+$('logoImg').src='__LOGO__';
+document.addEventListener('DOMContentLoaded',init);
+if(document.readyState!=='loading') init();
+</script>
+</body>
+</html>
