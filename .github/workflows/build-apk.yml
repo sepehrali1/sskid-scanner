@@ -1,0 +1,105 @@
+name: Build Android APK
+
+# ساخت APK در فضای ابری گیت‌هاب (سرورهای گوگل از این‌جا بلاک نیستند).
+# اجرا: از تب Actions دکمهٔ Run workflow، یا با push یک تگ مثل v1.0
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Pillow
+        run: python -m pip install --upgrade pip pillow
+
+      # ---------- بازسازی فایل تک‌فایلی وب از قالب ----------
+      - name: Build single-file web app
+        working-directory: lua-audit/web
+        run: python -X utf8 build_web.py
+
+      - name: Stage web app into Android assets
+        run: |
+          mkdir -p lua-audit/android/app/src/main/assets
+          cp lua-audit/web/SskidScanner.html lua-audit/android/app/src/main/assets/SskidScanner.html
+
+      - name: Generate launcher icons
+        working-directory: lua-audit/android
+        run: python -X utf8 make_icons.py
+
+      # ---------- ابزارهای اندروید ----------
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK platform + build tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x lua-audit/android/gradlew
+
+      # ---------- ساخت APK ----------
+      - name: Build debug APK (installable / قابل نصب)
+        working-directory: lua-audit/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Build release APK (unsigned) if a keystore is provided
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        working-directory: lua-audit/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > app/sskid.keystore
+          ./gradlew --no-daemon assembleRelease \
+            -Pandroid.injected.signing.store.file="$PWD/app/sskid.keystore" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Collect APKs
+        run: |
+          mkdir -p out
+          find lua-audit/android/app/build/outputs/apk -name '*.apk' -exec cp {} out/ \;
+          ls -la out
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SskidScriptScanner-apk
+          path: out/*.apk
+          if-no-files-found: error
+
+      - name: Attach APK to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.apk
+          generate_release_notes: true
